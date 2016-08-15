@@ -1,0 +1,15 @@
+---
+platform: linux
+
+image_resource:
+  type: docker-image
+  source:
+    repository: teddyking/go-ci
+    tag: '1.6.2'
+
+inputs:
+- name: netsetgo-src
+  path: src/github.com/teddyking/netsetgo
+
+run:
+  path: src/github.com/teddyking/netsetgo/ci/scripts/test

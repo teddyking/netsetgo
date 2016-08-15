@@ -1,0 +1,15 @@
+jobs:
+- name: test
+  plan:
+  - get: netsetgo-src
+    trigger: true
+  - task: test
+    file: netsetgo-src/ci/test.yml
+
+resources:
+- name: netsetgo-src
+  type: git
+  source:
+    uri: git@github.com:teddyking/netsetgo.git
+    branch: master
+    private_key: {{github-private-key}}

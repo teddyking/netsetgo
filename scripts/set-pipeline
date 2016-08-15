@@ -1,0 +1,3 @@
+#!/bin/bash
+
+fly -t lite sp -p netsetgo -c ci/pipeline.yml -l ci/secrets.yml
