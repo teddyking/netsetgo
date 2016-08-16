@@ -5,6 +5,7 @@ jobs:
     trigger: true
   - task: test
     file: netsetgo-src/ci/test.yml
+    privileged: true
 
 resources:
 - name: netsetgo-src
