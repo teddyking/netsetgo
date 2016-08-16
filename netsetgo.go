@@ -19,6 +19,20 @@ func CreateBridge(name string) error {
 	return netlink.LinkAdd(bridge)
 }
 
+func AddAddressToBridge(name, address string) error {
+	bridgeLinkAttrs := netlink.NewLinkAttrs()
+	bridgeLinkAttrs.Name = name
+
+	bridge := &netlink.Bridge{bridgeLinkAttrs}
+
+	addr, err := netlink.ParseAddr(address)
+	if err != nil {
+		return err
+	}
+
+	return netlink.AddrAdd(bridge, addr)
+}
+
 func bridgeExists(name string) bool {
 	_, err := net.InterfaceByName(name)
 
