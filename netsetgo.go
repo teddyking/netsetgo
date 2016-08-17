@@ -33,6 +33,14 @@ func AddAddressToBridge(name, address string) error {
 	return netlink.AddrAdd(bridge, addr)
 }
 
+func SetBridgeUp(name string) error {
+	bridgeLinkAttrs := netlink.NewLinkAttrs()
+	bridgeLinkAttrs.Name = name
+
+	bridge := &netlink.Bridge{bridgeLinkAttrs}
+	return netlink.LinkSetUp(bridge)
+}
+
 func bridgeExists(name string) bool {
 	_, err := net.InterfaceByName(name)
 

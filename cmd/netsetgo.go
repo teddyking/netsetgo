@@ -15,4 +15,5 @@ func main() {
 
 	netsetgo.CreateBridge(bridgeName)
 	netsetgo.AddAddressToBridge(bridgeName, bridgeAddress)
+	netsetgo.SetBridgeUp(bridgeName)
 }

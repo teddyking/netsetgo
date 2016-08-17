@@ -5,6 +5,7 @@ import (
 	. "github.com/onsi/gomega"
 	. "github.com/teddyking/netsetgo"
 
+	"io/ioutil"
 	"net"
 	"os/exec"
 
@@ -80,6 +81,53 @@ var _ = Describe("netsetgo", func() {
 		Context("when the bridge doesn't exist", func() {
 			It("returns an error", func() {
 				err := AddAddressToBridge("tower", "10.10.10.1/24")
+				Expect(err.Error()).To(ContainSubstring("no such device"))
+			})
+		})
+	})
+
+	Describe("SetBridgeUp", func() {
+		Context("when the bridge exists and has an address", func() {
+			BeforeEach(func() {
+				cmd := exec.Command("sh", "-c", "ip link add name tower type bridge")
+				Expect(cmd.Run()).To(Succeed())
+				cmd = exec.Command("sh", "-c", "ip addr add 10.10.10.1/24 dev tower")
+				Expect(cmd.Run()).To(Succeed())
+			})
+
+			AfterEach(func() {
+				cmd := exec.Command("sh", "-c", "ip link delete tower")
+				Expect(cmd.Run()).To(Succeed())
+			})
+
+			Context("when the bridge isn't already up", func() {
+				It("brings the bridge up", func() {
+					err := SetBridgeUp("tower")
+					Expect(err).NotTo(HaveOccurred())
+
+					Expect("/sys/class/net/tower/carrier").To(BeAnExistingFile())
+					carrierFileContents, err := ioutil.ReadFile("/sys/class/net/tower/carrier")
+					Expect(err).NotTo(HaveOccurred())
+					Expect(string(carrierFileContents)).To(Equal("1\n"))
+				})
+			})
+
+			Context("when the bridge is already up", func() {
+				BeforeEach(func() {
+					cmd := exec.Command("sh", "-c", "ip link set tower up")
+					Expect(cmd.Run()).To(Succeed())
+				})
+
+				It("doesn't error", func() {
+					err := SetBridgeUp("tower")
+					Expect(err).NotTo(HaveOccurred())
+				})
+			})
+		})
+
+		Context("when the bridge doesn't exist", func() {
+			It("returns an error", func() {
+				err := SetBridgeUp("tower")
 				Expect(err.Error()).To(ContainSubstring("no such device"))
 			})
 		})
