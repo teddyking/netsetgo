@@ -1,13 +1,14 @@
 package netsetgo
 
 import (
+	"fmt"
 	"net"
 
 	"github.com/vishvananda/netlink"
 )
 
 func CreateBridge(name string) error {
-	if bridgeExists(name) {
+	if interfaceExists(name) {
 		return nil
 	}
 
@@ -41,7 +42,26 @@ func SetBridgeUp(name string) error {
 	return netlink.LinkSetUp(bridge)
 }
 
-func bridgeExists(name string) bool {
+func CreateVethPair(namePrefix string) error {
+	hostVethName := fmt.Sprintf("%s0", namePrefix)
+	containerVethName := fmt.Sprintf("%s1", namePrefix)
+
+	if interfaceExists(hostVethName) {
+		return nil
+	}
+
+	vethLinkAttrs := netlink.NewLinkAttrs()
+	vethLinkAttrs.Name = hostVethName
+
+	veth := &netlink.Veth{
+		LinkAttrs: vethLinkAttrs,
+		PeerName:  containerVethName,
+	}
+
+	return netlink.LinkAdd(veth)
+}
+
+func interfaceExists(name string) bool {
 	_, err := net.InterfaceByName(name)
 
 	return err == nil

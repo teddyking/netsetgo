@@ -14,7 +14,7 @@ import (
 var _ = Describe("netsetgo binary", func() {
 	Context("when passed all required args", func() {
 		BeforeEach(func() {
-			command := exec.Command(pathToNetsetgo, "--bridgeName=tower", "--bridgeAddress=10.10.10.1/24")
+			command := exec.Command(pathToNetsetgo, "--bridgeName=tower", "--bridgeAddress=10.10.10.1/24", "--vethNamePrefix=v")
 			session, err := gexec.Start(command, GinkgoWriter, GinkgoWriter)
 			Expect(err).NotTo(HaveOccurred())
 			Eventually(session).Should(gexec.Exit(0))
@@ -22,6 +22,8 @@ var _ = Describe("netsetgo binary", func() {
 
 		AfterEach(func() {
 			cmd := exec.Command("sh", "-c", "ip link delete tower")
+			Expect(cmd.Run()).To(Succeed())
+			cmd = exec.Command("sh", "-c", "ip link delete v0") // will implicitly delete v1 :D
 			Expect(cmd.Run()).To(Succeed())
 		})
 
@@ -45,6 +47,13 @@ var _ = Describe("netsetgo binary", func() {
 			carrierFileContents, err := ioutil.ReadFile("/sys/class/net/tower/carrier")
 			Expect(err).NotTo(HaveOccurred())
 			Eventually(string(carrierFileContents)).Should(Equal("1\n"))
+		})
+
+		It("creates a veth pair on the host using the provided name prefix", func() {
+			_, err := net.InterfaceByName("v0")
+			Expect(err).NotTo(HaveOccurred())
+			_, err = net.InterfaceByName("v1")
+			Expect(err).NotTo(HaveOccurred())
 		})
 	})
 })

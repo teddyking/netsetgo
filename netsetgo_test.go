@@ -132,4 +132,37 @@ var _ = Describe("netsetgo", func() {
 			})
 		})
 	})
+
+	Describe("CreateVethPair", func() {
+		AfterEach(func() {
+			cmd := exec.Command("sh", "-c", "ip link delete veth0") // will implicitly delete veth1 :D
+			Expect(cmd.Run()).To(Succeed())
+		})
+
+		Context("when a veth pair with the provided name prefix doesn't already exist", func() {
+			It("creates a veth pair using the provided name prefix", func() {
+				err := CreateVethPair("veth")
+				Expect(err).NotTo(HaveOccurred())
+
+				_, err = net.InterfaceByName("veth0")
+				Expect(err).NotTo(HaveOccurred())
+				_, err = net.InterfaceByName("veth1")
+				Expect(err).NotTo(HaveOccurred())
+			})
+		})
+
+		Context("when a veth pair with the provided name prefix already exists", func() {
+			BeforeEach(func() {
+				cmd := exec.Command("sh", "-c", "ip link add veth0 type veth peer name veth1")
+				Expect(cmd.Run()).To(Succeed())
+			})
+
+			It("doesn't error", func() {
+				err := CreateVethPair("veth")
+
+				Expect(err).NotTo(HaveOccurred())
+			})
+		})
+	})
+
 })
