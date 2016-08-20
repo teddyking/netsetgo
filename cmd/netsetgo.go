@@ -18,4 +18,5 @@ func main() {
 	netsetgo.AddAddressToBridge(bridgeName, bridgeAddress)
 	netsetgo.SetBridgeUp(bridgeName)
 	netsetgo.CreateVethPair(vethNamePrefix)
+	netsetgo.AttachVethToBridge(bridgeName, vethNamePrefix)
 }

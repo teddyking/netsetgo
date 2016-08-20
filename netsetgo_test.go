@@ -165,4 +165,52 @@ var _ = Describe("netsetgo", func() {
 		})
 	})
 
+	Describe("AttachVethToBridge", func() {
+		Context("when the bridge and the veth pair both exist", func() {
+			BeforeEach(func() {
+				cmd := exec.Command("sh", "-c", "ip link add name tower type bridge")
+				Expect(cmd.Run()).To(Succeed())
+				cmd = exec.Command("sh", "-c", "ip link add veth0 type veth peer name veth1")
+				Expect(cmd.Run()).To(Succeed())
+			})
+
+			AfterEach(func() {
+				cmd := exec.Command("sh", "-c", "ip link delete tower")
+				Expect(cmd.Run()).To(Succeed())
+				cmd = exec.Command("sh", "-c", "ip link delete veth0") // will implicitly delete veth1 :D
+				Expect(cmd.Run()).To(Succeed())
+			})
+
+			It("attaches the host's side of the veth pair to the bridge", func() {
+				err := AttachVethToBridge("tower", "veth")
+				Expect(err).NotTo(HaveOccurred())
+
+				Expect("/sys/class/net/veth0/master").To(BeAnExistingFile())
+			})
+		})
+
+		Context("when the bridge doesn't exist", func() {
+			BeforeEach(func() {
+				cmd := exec.Command("sh", "-c", "ip link add veth0 type veth peer name veth1")
+				Expect(cmd.Run()).To(Succeed())
+			})
+
+			It("returns an error", func() {
+				err := AttachVethToBridge("tower", "veth0")
+				Expect(err.Error()).To(ContainSubstring("Link not found"))
+			})
+		})
+
+		Context("when the veth pair doesn't exist", func() {
+			BeforeEach(func() {
+				cmd := exec.Command("sh", "-c", "ip link add name tower type bridge")
+				Expect(cmd.Run()).To(Succeed())
+			})
+
+			It("returns an error", func() {
+				err := AttachVethToBridge("tower", "veth0")
+				Expect(err.Error()).To(ContainSubstring("Link not found"))
+			})
+		})
+	})
 })

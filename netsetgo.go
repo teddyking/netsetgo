@@ -61,6 +61,21 @@ func CreateVethPair(namePrefix string) error {
 	return netlink.LinkAdd(veth)
 }
 
+func AttachVethToBridge(bridgeName, vethNamePrefix string) error {
+	bridge, err := netlink.LinkByName(bridgeName)
+	if err != nil {
+		return err
+	}
+
+	hostVethName := fmt.Sprintf("%s0", vethNamePrefix)
+	hostVeth, err := netlink.LinkByName(hostVethName)
+	if err != nil {
+		return err
+	}
+
+	return netlink.LinkSetMaster(hostVeth, bridge.(*netlink.Bridge))
+}
+
 func interfaceExists(name string) bool {
 	_, err := net.InterfaceByName(name)
 
