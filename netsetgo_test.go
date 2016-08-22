@@ -5,9 +5,13 @@ import (
 	. "github.com/onsi/gomega"
 	. "github.com/teddyking/netsetgo"
 
+	"fmt"
 	"io/ioutil"
 	"net"
+	"os"
 	"os/exec"
+	"strconv"
+	"strings"
 
 	"github.com/onsi/gomega/gbytes"
 	"github.com/onsi/gomega/gexec"
@@ -195,8 +199,13 @@ var _ = Describe("netsetgo", func() {
 				Expect(cmd.Run()).To(Succeed())
 			})
 
+			AfterEach(func() {
+				cmd := exec.Command("sh", "-c", "ip link delete veth0") // will implicitly delete veth1 :D
+				Expect(cmd.Run()).To(Succeed())
+			})
+
 			It("returns an error", func() {
-				err := AttachVethToBridge("tower", "veth0")
+				err := AttachVethToBridge("tower", "veth")
 				Expect(err.Error()).To(ContainSubstring("Link not found"))
 			})
 		})
@@ -207,8 +216,90 @@ var _ = Describe("netsetgo", func() {
 				Expect(cmd.Run()).To(Succeed())
 			})
 
+			AfterEach(func() {
+				cmd := exec.Command("sh", "-c", "ip link delete tower")
+				Expect(cmd.Run()).To(Succeed())
+			})
+
 			It("returns an error", func() {
-				err := AttachVethToBridge("tower", "veth0")
+				err := AttachVethToBridge("tower", "veth")
+				Expect(err.Error()).To(ContainSubstring("Link not found"))
+			})
+		})
+	})
+
+	Describe("PlaceVethInNetworkNamespace", func() {
+		Context("when the network namespace and the veth pair both exist", func() {
+			var (
+				parentPid, pid int
+			)
+
+			BeforeEach(func() {
+				cmd := exec.Command("sh", "-c", "ip netns add testNetNamespace")
+				Expect(cmd.Run()).To(Succeed())
+
+				cmd = exec.Command("sh", "-c", "ip netns exec testNetNamespace sleep 1000")
+				Expect(cmd.Start()).To(Succeed())
+
+				parentPid = cmd.Process.Pid
+
+				cmd = exec.Command("sh", "-c", fmt.Sprintf("ps --ppid %d | tail -n 1 | awk '{print $1}'", parentPid))
+				pidBytes, err := cmd.Output()
+				Expect(err).NotTo(HaveOccurred())
+
+				pid, err = strconv.Atoi(strings.TrimSpace(string(pidBytes)))
+				Expect(err).NotTo(HaveOccurred())
+
+				cmd = exec.Command("sh", "-c", "ip link add veth0 type veth peer name veth1")
+				Expect(cmd.Run()).To(Succeed())
+			})
+
+			AfterEach(func() {
+				parentProcess, err := os.FindProcess(parentPid)
+				Expect(err).NotTo(HaveOccurred())
+
+				Expect(parentProcess.Kill()).To(Succeed())
+
+				cmd := exec.Command("sh", "-c", "ip link delete veth0") // will implicitly delete veth1 :D
+				Expect(cmd.Run()).To(Succeed())
+
+				cmd = exec.Command("sh", "-c", "ip netns delete testNetNamespace")
+				Expect(cmd.Run()).To(Succeed())
+			})
+
+			It("places the container's side of the veth pair into the namespace using the provided pid", func() {
+				err := PlaceVethInNetworkNamespace(pid, "veth")
+				Expect(err).NotTo(HaveOccurred())
+
+				stdout := gbytes.NewBuffer()
+				cmd := exec.Command("sh", "-c", "ip netns exec testNetNamespace ip addr")
+				_, err = gexec.Start(cmd, stdout, GinkgoWriter)
+				Expect(err).NotTo(HaveOccurred())
+
+				Eventually(stdout).Should(gbytes.Say("veth1"))
+			})
+		})
+
+		Context("when the network namespace doesn't exist", func() {
+			BeforeEach(func() {
+				cmd := exec.Command("sh", "-c", "ip link add veth0 type veth peer name veth1")
+				Expect(cmd.Run()).To(Succeed())
+			})
+
+			AfterEach(func() {
+				cmd := exec.Command("sh", "-c", "ip link delete veth0") // will implicitly delete veth1 :D
+				Expect(cmd.Run()).To(Succeed())
+			})
+
+			It("returns an error", func() {
+				err := PlaceVethInNetworkNamespace(-1, "veth")
+				Expect(err.Error()).To(ContainSubstring("no such process"))
+			})
+		})
+
+		Context("when the veth pair doesn't exist", func() {
+			It("returns an error", func() {
+				err := PlaceVethInNetworkNamespace(1, "veth")
 				Expect(err.Error()).To(ContainSubstring("Link not found"))
 			})
 		})
