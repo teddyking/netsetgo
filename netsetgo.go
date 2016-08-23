@@ -7,47 +7,51 @@ import (
 	"github.com/vishvananda/netlink"
 )
 
-func CreateBridge(name string) error {
-	if interfaceExists(name) {
-		return nil
-	}
-
-	bridgeLinkAttrs := netlink.NewLinkAttrs()
-	bridgeLinkAttrs.Name = name
-
-	bridge := &netlink.Bridge{bridgeLinkAttrs}
-
-	return netlink.LinkAdd(bridge)
+type Netset struct {
+	bridgeLinkAttrs netlink.LinkAttrs
+	bridgeAddress   string
+	vethNamePrefix  string
 }
 
-func AddAddressToBridge(name, address string) error {
-	bridgeLinkAttrs := netlink.NewLinkAttrs()
-	bridgeLinkAttrs.Name = name
+func New(bridgeName, bridgeAddress, vethNamePrefix string) *Netset {
+	return &Netset{
+		bridgeLinkAttrs: netlink.LinkAttrs{
+			Name: bridgeName,
+		},
+		bridgeAddress:  bridgeAddress,
+		vethNamePrefix: vethNamePrefix,
+	}
+}
 
-	bridge := &netlink.Bridge{bridgeLinkAttrs}
+func (n *Netset) CreateBridge() (*net.Interface, error) {
+	if interfaceExists(n.bridgeLinkAttrs.Name) {
+		return net.InterfaceByName(n.bridgeLinkAttrs.Name)
+	}
 
-	addr, err := netlink.ParseAddr(address)
+	bridgeLink := &netlink.Bridge{n.bridgeLinkAttrs}
+
+	if err := netlink.LinkAdd(bridgeLink); err != nil {
+		return nil, err
+	}
+
+	bridgeAddress, err := netlink.ParseAddr(n.bridgeAddress)
 	if err != nil {
-		return err
+		return nil, err
 	}
 
-	return netlink.AddrAdd(bridge, addr)
+	if err := netlink.AddrAdd(bridgeLink, bridgeAddress); err != nil {
+		return nil, err
+	}
+
+	return net.InterfaceByName(n.bridgeLinkAttrs.Name)
 }
 
-func SetBridgeUp(name string) error {
-	bridgeLinkAttrs := netlink.NewLinkAttrs()
-	bridgeLinkAttrs.Name = name
-
-	bridge := &netlink.Bridge{bridgeLinkAttrs}
-	return netlink.LinkSetUp(bridge)
-}
-
-func CreateVethPair(namePrefix string) error {
-	hostVethName := fmt.Sprintf("%s0", namePrefix)
-	containerVethName := fmt.Sprintf("%s1", namePrefix)
+func (n *Netset) CreateVethPair() (*net.Interface, *net.Interface, error) {
+	hostVethName := fmt.Sprintf("%s0", n.vethNamePrefix)
+	containerVethName := fmt.Sprintf("%s1", n.vethNamePrefix)
 
 	if interfaceExists(hostVethName) {
-		return nil
+		return vethInterfacesByName(hostVethName, containerVethName)
 	}
 
 	vethLinkAttrs := netlink.NewLinkAttrs()
@@ -58,16 +62,21 @@ func CreateVethPair(namePrefix string) error {
 		PeerName:  containerVethName,
 	}
 
-	return netlink.LinkAdd(veth)
+	if err := netlink.LinkAdd(veth); err != nil {
+		return nil, nil, err
+	}
+
+	return vethInterfacesByName(hostVethName, containerVethName)
 }
 
-func AttachVethToBridge(bridgeName, vethNamePrefix string) error {
-	bridge, err := netlink.LinkByName(bridgeName)
+func (n *Netset) AttachVethToBridge() error {
+	hostVethName := fmt.Sprintf("%s0", n.vethNamePrefix)
+
+	bridge, err := netlink.LinkByName(n.bridgeLinkAttrs.Name)
 	if err != nil {
 		return err
 	}
 
-	hostVethName := fmt.Sprintf("%s0", vethNamePrefix)
 	hostVeth, err := netlink.LinkByName(hostVethName)
 	if err != nil {
 		return err
@@ -76,13 +85,14 @@ func AttachVethToBridge(bridgeName, vethNamePrefix string) error {
 	return netlink.LinkSetMaster(hostVeth, bridge.(*netlink.Bridge))
 }
 
-func PlaceVethInNetworkNamespace(pid int, vethNamePrefix string) error {
+func (n *Netset) PlaceVethInNetworkNs(pid int, vethNamePrefix string) error {
 	containerVethName := fmt.Sprintf("%s1", vethNamePrefix)
 
 	containerVeth, err := netlink.LinkByName(containerVethName)
 	if err != nil {
 		return err
 	}
+
 	return netlink.LinkSetNsPid(containerVeth, pid)
 }
 
@@ -90,4 +100,18 @@ func interfaceExists(name string) bool {
 	_, err := net.InterfaceByName(name)
 
 	return err == nil
+}
+
+func vethInterfacesByName(hostVethName, containerVethName string) (*net.Interface, *net.Interface, error) {
+	hostVeth, err := net.InterfaceByName(hostVethName)
+	if err != nil {
+		return nil, nil, err
+	}
+
+	containerVeth, err := net.InterfaceByName(containerVethName)
+	if err != nil {
+		return nil, nil, err
+	}
+
+	return hostVeth, containerVeth, nil
 }

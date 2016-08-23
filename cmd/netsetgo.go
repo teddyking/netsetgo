@@ -16,10 +16,10 @@ func main() {
 	flag.IntVar(&pid, "pid", 0, "pid of a process in the container's network namespace")
 	flag.Parse()
 
-	netsetgo.CreateBridge(bridgeName)
-	netsetgo.AddAddressToBridge(bridgeName, bridgeAddress)
-	netsetgo.SetBridgeUp(bridgeName)
-	netsetgo.CreateVethPair(vethNamePrefix)
-	netsetgo.AttachVethToBridge(bridgeName, vethNamePrefix)
-	netsetgo.PlaceVethInNetworkNamespace(pid, vethNamePrefix)
+	netset := netsetgo.New(bridgeName, bridgeAddress, vethNamePrefix)
+
+	netset.CreateBridge()
+	netset.CreateVethPair()
+	netset.AttachVethToBridge()
+	netset.PlaceVethInNetworkNs(pid, vethNamePrefix)
 }
