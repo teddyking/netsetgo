@@ -2,6 +2,8 @@ package main
 
 import (
 	"flag"
+	"fmt"
+	"os"
 
 	"github.com/teddyking/netsetgo"
 )
@@ -18,8 +20,22 @@ func main() {
 
 	netset := netsetgo.New(bridgeName, bridgeAddress, vethNamePrefix)
 
-	netset.CreateBridge()
-	netset.CreateVethPair()
-	netset.AttachVethToBridge()
-	netset.PlaceVethInNetworkNs(pid, vethNamePrefix)
+	_, err := netset.CreateBridge()
+	check(err)
+
+	_, _, err = netset.CreateVethPair()
+	check(err)
+
+	err = netset.AttachVethToBridge()
+	check(err)
+
+	err = netset.PlaceVethInNetworkNs(pid, vethNamePrefix)
+	check(err)
+}
+
+func check(err error) {
+	if err != nil {
+		fmt.Printf("ERROR - %s\n", err.Error())
+		os.Exit(1)
+	}
 }
