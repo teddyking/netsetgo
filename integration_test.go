@@ -27,6 +27,7 @@ var _ = Describe("netsetgo binary", func() {
 				"--bridgeName=tower",
 				"--bridgeAddress=10.10.10.1/24",
 				"--vethNamePrefix=veth",
+				"--containerAddress=10.10.10.2/24",
 				fmt.Sprintf("--pid=%d", pid),
 			)
 
@@ -73,6 +74,15 @@ var _ = Describe("netsetgo binary", func() {
 			Expect(err).NotTo(HaveOccurred())
 
 			Eventually(stdout).Should(gbytes.Say("veth1"))
+		})
+
+		PIt("assignss the provided IP address to the container's side of the veth pair", func() {
+			stdout := gbytes.NewBuffer()
+			cmd := exec.Command("sh", "-c", "ip netns exec testNetNamespace ip addr")
+			_, err := gexec.Start(cmd, stdout, GinkgoWriter)
+			Expect(err).NotTo(HaveOccurred())
+
+			Eventually(stdout).Should(gbytes.Say("10.10.10.2"))
 		})
 	})
 })

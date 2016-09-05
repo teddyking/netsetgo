@@ -7,4 +7,4 @@ export GOPATH=$GOPATH:$(pwd)
 
 cd src/github.com/teddyking/netsetgo
 
-ginkgo
+ginkgo -r -keepGoing

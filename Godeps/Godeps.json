@@ -7,6 +7,10 @@
 	],
 	"Deps": [
 		{
+			"ImportPath": "code.cloudfoundry.org/guardian/kawasaki/netns",
+			"Rev": "d0ff3bb2384a92b5ac7edc0fb13a29752a28c608"
+		},
+		{
 			"ImportPath": "github.com/onsi/ginkgo",
 			"Comment": "v1.2.0-57-g059cec0",
 			"Rev": "059cec02d342bab423425a99b191186a03255e9e"
