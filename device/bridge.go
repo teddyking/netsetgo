@@ -29,6 +29,10 @@ func (b *Bridge) Create(name string, ip net.IP, subnet *net.IPNet) (*net.Interfa
 		return nil, err
 	}
 
+	if err := netlink.LinkSetUp(link); err != nil {
+		return nil, err
+	}
+
 	return net.InterfaceByName(name)
 }
 

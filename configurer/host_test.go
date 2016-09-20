@@ -1,15 +1,15 @@
 package configurer_test
 
 import (
+	. "github.com/onsi/ginkgo"
+	. "github.com/onsi/gomega"
+	. "github.com/teddyking/netsetgo/configurer"
+
 	"errors"
 	"net"
 
 	"github.com/teddyking/netsetgo"
-	. "github.com/teddyking/netsetgo/configurer"
 	"github.com/teddyking/netsetgo/configurer/configurerfakes"
-
-	. "github.com/onsi/ginkgo"
-	. "github.com/onsi/gomega"
 )
 
 var _ = Describe("Host", func() {

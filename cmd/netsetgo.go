@@ -6,6 +6,7 @@ import (
 	"net"
 	"os"
 
+	"code.cloudfoundry.org/guardian/kawasaki/netns"
 	"github.com/teddyking/netsetgo"
 	"github.com/teddyking/netsetgo/configurer"
 	"github.com/teddyking/netsetgo/device"
@@ -24,21 +25,28 @@ func main() {
 
 	bridgeCreator := device.NewBridge()
 	vethCreator := device.NewVeth()
+	netnsExecer := &netns.Execer{}
 
 	hostConfigurer := configurer.NewHostConfigurer(bridgeCreator, vethCreator)
-	netset := netsetgo.New(hostConfigurer)
+	containerConfigurer := configurer.NewContainerConfigurer(netnsExecer)
+	netset := netsetgo.New(hostConfigurer, containerConfigurer)
 
 	bridgeIP, bridgeSubnet, err := net.ParseCIDR(bridgeAddress)
+	check(err)
+
+	containerIP, _, err := net.ParseCIDR(containerAddress)
 	check(err)
 
 	netConfig := netsetgo.NetworkConfig{
 		BridgeName:     bridgeName,
 		BridgeIP:       bridgeIP,
+		ContainerIP:    containerIP,
 		Subnet:         bridgeSubnet,
 		VethNamePrefix: vethNamePrefix,
 	}
 
 	netset.ConfigureHost(netConfig, pid)
+	netset.ConfigureContainer(netConfig, pid)
 }
 
 func check(err error) {

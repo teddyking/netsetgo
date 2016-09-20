@@ -57,6 +57,15 @@ func setTestBridgeUp() {
 	Expect(cmd.Run()).To(Succeed())
 }
 
+func createTestVethInTestNetNamespace() {
+	cmd := exec.Command("sh", "-c", "ip link add veth0 type veth peer name veth1")
+	Expect(cmd.Run()).To(Succeed())
+	cmd = exec.Command("sh", "-c", "ip link set veth1 netns testNetNamespace")
+	Expect(cmd.Run()).To(Succeed())
+	cmd = exec.Command("sh", "-c", "ip link set veth0 up")
+	Expect(cmd.Run()).To(Succeed())
+}
+
 func runCmdInTestNetNamespace() (int, int) {
 	cmd := exec.Command("sh", "-c", "ip netns exec testNetNamespace sleep 1000")
 	Expect(cmd.Start()).To(Succeed())

@@ -2,34 +2,46 @@ package configurer
 
 import (
 	"fmt"
+	"net"
 	"os"
-	"os/exec"
 
 	"code.cloudfoundry.org/guardian/kawasaki/netns"
+	"github.com/teddyking/netsetgo"
+	"github.com/vishvananda/netlink"
 )
 
-type ContainerConfigurer struct {
-	pid    int
-	execer *netns.Execer
+type Container struct {
+	NetnsExecer *netns.Execer
 }
 
-func New(pid int) *ContainerConfigurer {
-	return &ContainerConfigurer{
-		pid:    pid,
-		execer: &netns.Execer{},
+func NewContainerConfigurer(netnsExecer *netns.Execer) *Container {
+	return &Container{
+		NetnsExecer: netnsExecer,
 	}
 }
 
-func (c *ContainerConfigurer) Exec(cmd *exec.Cmd) error {
-	netnsFile, err := os.Open(fmt.Sprintf("/proc/%d/ns/net", c.pid))
+func (c *Container) Apply(netConfig netsetgo.NetworkConfig, pid int) error {
+	netnsFile, err := os.Open(fmt.Sprintf("/proc/%d/ns/net", pid))
 	defer netnsFile.Close()
 	if err != nil {
-		return err
+		return fmt.Errorf("Unable to find network namespace for process with pid '%d'", pid)
 	}
 
 	cbFunc := func() error {
-		return cmd.Run()
+		containerVethName := fmt.Sprintf("%s1", netConfig.VethNamePrefix)
+		link, err := netlink.LinkByName(containerVethName)
+		if err != nil {
+			return fmt.Errorf("Container veth '%s' not found", containerVethName)
+		}
+
+		addr := &netlink.Addr{IPNet: &net.IPNet{IP: netConfig.ContainerIP, Mask: netConfig.Subnet.Mask}}
+		err = netlink.AddrAdd(link, addr)
+		if err != nil {
+			return fmt.Errorf("Unable to assign IP address '%s' to %s", netConfig.ContainerIP, containerVethName)
+		}
+
+		return netlink.LinkSetUp(link)
 	}
 
-	return c.execer.Exec(netnsFile, cbFunc)
+	return c.NetnsExecer.Exec(netnsFile, cbFunc)
 }

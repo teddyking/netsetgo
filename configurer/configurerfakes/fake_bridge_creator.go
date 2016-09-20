@@ -9,12 +9,12 @@ import (
 )
 
 type FakeBridgeCreator struct {
-	CreateStub        func(string, net.IP, *net.IPNet) (*net.Interface, error)
+	CreateStub        func(name string, ip net.IP, subnet *net.IPNet) (*net.Interface, error)
 	createMutex       sync.RWMutex
 	createArgsForCall []struct {
-		arg1 string
-		arg2 net.IP
-		arg3 *net.IPNet
+		name   string
+		ip     net.IP
+		subnet *net.IPNet
 	}
 	createReturns struct {
 		result1 *net.Interface
@@ -33,17 +33,17 @@ type FakeBridgeCreator struct {
 	invocationsMutex sync.RWMutex
 }
 
-func (fake *FakeBridgeCreator) Create(arg1 string, arg2 net.IP, arg3 *net.IPNet) (*net.Interface, error) {
+func (fake *FakeBridgeCreator) Create(name string, ip net.IP, subnet *net.IPNet) (*net.Interface, error) {
 	fake.createMutex.Lock()
 	fake.createArgsForCall = append(fake.createArgsForCall, struct {
-		arg1 string
-		arg2 net.IP
-		arg3 *net.IPNet
-	}{arg1, arg2, arg3})
-	fake.recordInvocation("Create", []interface{}{arg1, arg2, arg3})
+		name   string
+		ip     net.IP
+		subnet *net.IPNet
+	}{name, ip, subnet})
+	fake.recordInvocation("Create", []interface{}{name, ip, subnet})
 	fake.createMutex.Unlock()
 	if fake.CreateStub != nil {
-		return fake.CreateStub(arg1, arg2, arg3)
+		return fake.CreateStub(name, ip, subnet)
 	} else {
 		return fake.createReturns.result1, fake.createReturns.result2
 	}
@@ -58,7 +58,7 @@ func (fake *FakeBridgeCreator) CreateCallCount() int {
 func (fake *FakeBridgeCreator) CreateArgsForCall(i int) (string, net.IP, *net.IPNet) {
 	fake.createMutex.RLock()
 	defer fake.createMutex.RUnlock()
-	return fake.createArgsForCall[i].arg1, fake.createArgsForCall[i].arg2, fake.createArgsForCall[i].arg3
+	return fake.createArgsForCall[i].name, fake.createArgsForCall[i].ip, fake.createArgsForCall[i].subnet
 }
 
 func (fake *FakeBridgeCreator) CreateReturns(result1 *net.Interface, result2 error) {

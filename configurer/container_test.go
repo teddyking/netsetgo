@@ -5,69 +5,114 @@ import (
 	. "github.com/onsi/gomega"
 	. "github.com/teddyking/netsetgo/configurer"
 
+	"net"
 	"os/exec"
 
+	"code.cloudfoundry.org/guardian/kawasaki/netns"
 	"github.com/onsi/gomega/gbytes"
 	"github.com/onsi/gomega/gexec"
+	"github.com/teddyking/netsetgo"
 )
 
-var _ = PDescribe("ContainerConfigurer", func() {
+var _ = Describe("ContainerConfigurer", func() {
 	var (
-		parentPid, pid          int
-		configurer              *ContainerConfigurer
-		testCmd, invalidTestCmd *exec.Cmd
+		parentPid, pid      int
+		netnsExecer         *netns.Execer
+		containerConfigurer *Container
+		netConfig           netsetgo.NetworkConfig
 	)
 
 	BeforeEach(func() {
 		createTestNetNamespace()
 		parentPid, pid = runCmdInTestNetNamespace()
+		createTestVethInTestNetNamespace()
 
-		testCmd = exec.Command("sh", "-c", "ip link add name testdevice type bridge")
-		invalidTestCmd = exec.Command("sh", "-c", "notavalidcommand")
-	})
+		netnsExecer = &netns.Execer{}
+		containerConfigurer = NewContainerConfigurer(netnsExecer)
 
-	JustBeforeEach(func() {
-		configurer = New(pid)
+		containerAddress := "10.10.10.10/24"
+		ip, net, err := net.ParseCIDR(containerAddress)
+		Expect(err).NotTo(HaveOccurred())
+
+		netConfig = netsetgo.NetworkConfig{
+			ContainerIP:    ip,
+			Subnet:         net,
+			VethNamePrefix: "veth",
+		}
 	})
 
 	AfterEach(func() {
 		killCmdInTestNetNamespace(parentPid)
 		cleanupTestNetNamespace()
+		cleanupTestVeth()
 	})
 
-	It("runs commands inside the network namespace of the process identified by the provided pid", func() {
-		err := configurer.Exec(testCmd)
-		Expect(err).NotTo(HaveOccurred())
+	It("assigns the provided address to the container's side of the veth", func() {
+		Expect(containerConfigurer.Apply(netConfig, pid)).To(Succeed())
 
 		stdout := gbytes.NewBuffer()
-		cmd := exec.Command("sh", "-c", "ip netns exec testNetNamespace ip link ls")
-		_, err = gexec.Start(cmd, stdout, GinkgoWriter)
+		cmd := exec.Command("sh", "-c", "ip netns exec testNetNamespace ip addr")
+		_, err := gexec.Start(cmd, stdout, GinkgoWriter)
 		Expect(err).NotTo(HaveOccurred())
 
-		Eventually(stdout).Should(gbytes.Say("testdevice"))
+		Eventually(stdout).Should(gbytes.Say("10.10.10.10"))
 	})
 
-	It("assigns the provided address to the veth inside the network namespace of the process identified by the provided pid", func() {
+	It("brings the veth link up", func() {
+		Expect(containerConfigurer.Apply(netConfig, pid)).To(Succeed())
 
+		stdout := gbytes.NewBuffer()
+		cmd := exec.Command("sh", "-c", "ip netns exec testNetNamespace ip link list veth1")
+		_, err := gexec.Start(cmd, stdout, GinkgoWriter)
+		Expect(err).NotTo(HaveOccurred())
+
+		Consistently(stdout).ShouldNot(gbytes.Say("DOWN"))
 	})
 
-	Context("when the network namespace identified by the provided pid doesn't exist", func() {
+	Context("when the network namespace doesn't exist", func() {
+		It("returns a descriptive error message", func() {
+			err := containerConfigurer.Apply(netConfig, -1)
+
+			Expect(err).To(HaveOccurred())
+			Expect(err.Error()).To(Equal("Unable to find network namespace for process with pid '-1'"))
+		})
+	})
+
+	Context("when the veth can't be found", func() {
 		BeforeEach(func() {
-			pid = -1
+			netConfig.VethNamePrefix = "vethwillnotbefound"
 		})
 
-		It("returns a descriptive error", func() {
-			err := configurer.Exec(testCmd)
+		It("returns a descriptive error message", func() {
+			err := containerConfigurer.Apply(netConfig, pid)
+
 			Expect(err).To(HaveOccurred())
-			Expect(err.Error()).To(ContainSubstring("no such file or directory"))
+			Expect(err.Error()).To(Equal("Container veth 'vethwillnotbefound1' not found"))
 		})
 	})
 
-	Context("when the provided *exec.Cmd returns an error", func() {
-		It("returns a descriptive error", func() {
-			err := configurer.Exec(invalidTestCmd)
+	Context("when the IP address cannot be assigned", func() {
+		BeforeEach(func() {
+			cmd := exec.Command("sh", "-c", "ip netns exec testNetNamespace ip addr add 10.10.10.10/24 dev veth1")
+			Expect(cmd.Run()).To(Succeed())
+		})
+
+		It("returns a descriptive error message", func() {
+			err := containerConfigurer.Apply(netConfig, pid)
+
 			Expect(err).To(HaveOccurred())
-			Expect(err.Error()).To(ContainSubstring("exit status 127"))
+			Expect(err.Error()).To(Equal("Unable to assign IP address '10.10.10.10' to veth1"))
+		})
+	})
+
+	Context("when the veth link is already UP", func() {
+		BeforeEach(func() {
+			cmd := exec.Command("sh", "-c", "ip netns exec testNetNamespace ip link set veth1 up")
+			Expect(cmd.Run()).To(Succeed())
+		})
+
+		It("doesn't error", func() {
+			Expect(containerConfigurer.Apply(netConfig, pid)).To(Succeed())
 		})
 	})
 })

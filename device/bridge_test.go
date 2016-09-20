@@ -1,14 +1,17 @@
 package device_test
 
 import (
-	"fmt"
-	"net"
-
-	. "github.com/teddyking/netsetgo/device"
-	"github.com/vishvananda/netlink"
-
 	. "github.com/onsi/ginkgo"
 	. "github.com/onsi/gomega"
+	. "github.com/teddyking/netsetgo/device"
+
+	"fmt"
+	"net"
+	"os/exec"
+
+	"github.com/onsi/gomega/gbytes"
+	"github.com/onsi/gomega/gexec"
+	"github.com/vishvananda/netlink"
 )
 
 var _ = Describe("Bridge", func() {
@@ -39,6 +42,18 @@ var _ = Describe("Bridge", func() {
 			Expect(bridgeInterface.Name).To(Equal(bridgeName))
 		})
 
+		It("brings the bridge link up", func() {
+			_, err := bridge.Create(bridgeName, bridgeIP, bridgeSubnet)
+			Expect(err).NotTo(HaveOccurred())
+
+			stdout := gbytes.NewBuffer()
+			cmd := exec.Command("sh", "-c", "ip link list tower")
+			_, err = gexec.Start(cmd, stdout, GinkgoWriter)
+			Expect(err).NotTo(HaveOccurred())
+
+			Consistently(stdout).ShouldNot(gbytes.Say("DOWN"))
+		})
+
 		It("assigns the provided address to the bridge", func() {
 			bridgeInterface, err := bridge.Create(bridgeName, bridgeIP, bridgeSubnet)
 			Expect(err).NotTo(HaveOccurred())
@@ -46,7 +61,7 @@ var _ = Describe("Bridge", func() {
 			bridgeAddresses, err := bridgeInterface.Addrs()
 			Expect(err).NotTo(HaveOccurred())
 
-			Expect(len(bridgeAddresses)).To(Equal(1))
+			Expect(len(bridgeAddresses)).To(Equal(2))
 			Expect(bridgeAddresses[0].String()).To(Equal("10.10.10.1/24"))
 		})
 
@@ -67,7 +82,28 @@ var _ = Describe("Bridge", func() {
 
 				Expect(bridgeInterface.Name).To(Equal(bridgeName))
 			})
+
+			Context("and the link is already up", func() {
+				BeforeEach(func() {
+					link, err := netlink.LinkByName(bridgeName)
+					Expect(err).NotTo(HaveOccurred())
+					Expect(netlink.LinkSetUp(link)).To(Succeed())
+				})
+
+				It("doesn't error", func() {
+					_, err := bridge.Create(bridgeName, bridgeIP, bridgeSubnet)
+					Expect(err).NotTo(HaveOccurred())
+				})
+
+				It("returns the bridge", func() {
+					bridgeInterface, err := bridge.Create(bridgeName, bridgeIP, bridgeSubnet)
+					Expect(err).NotTo(HaveOccurred())
+
+					Expect(bridgeInterface.Name).To(Equal(bridgeName))
+				})
+			})
 		})
+
 	})
 
 	Describe("Attach", func() {

@@ -76,7 +76,7 @@ var _ = Describe("netsetgo binary", func() {
 			Eventually(stdout).Should(gbytes.Say("veth1"))
 		})
 
-		PIt("assignss the provided IP address to the container's side of the veth pair", func() {
+		It("assignss the provided IP address to the container's side of the veth pair", func() {
 			stdout := gbytes.NewBuffer()
 			cmd := exec.Command("sh", "-c", "ip netns exec testNetNamespace ip addr")
 			_, err := gexec.Start(cmd, stdout, GinkgoWriter)

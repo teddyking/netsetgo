@@ -7,7 +7,7 @@ import (
 	"github.com/teddyking/netsetgo"
 )
 
-type FakeHostConfigurer struct {
+type FakeConfigurer struct {
 	ApplyStub        func(netConfig netsetgo.NetworkConfig, pid int) error
 	applyMutex       sync.RWMutex
 	applyArgsForCall []struct {
@@ -21,7 +21,7 @@ type FakeHostConfigurer struct {
 	invocationsMutex sync.RWMutex
 }
 
-func (fake *FakeHostConfigurer) Apply(netConfig netsetgo.NetworkConfig, pid int) error {
+func (fake *FakeConfigurer) Apply(netConfig netsetgo.NetworkConfig, pid int) error {
 	fake.applyMutex.Lock()
 	fake.applyArgsForCall = append(fake.applyArgsForCall, struct {
 		netConfig netsetgo.NetworkConfig
@@ -36,26 +36,26 @@ func (fake *FakeHostConfigurer) Apply(netConfig netsetgo.NetworkConfig, pid int)
 	}
 }
 
-func (fake *FakeHostConfigurer) ApplyCallCount() int {
+func (fake *FakeConfigurer) ApplyCallCount() int {
 	fake.applyMutex.RLock()
 	defer fake.applyMutex.RUnlock()
 	return len(fake.applyArgsForCall)
 }
 
-func (fake *FakeHostConfigurer) ApplyArgsForCall(i int) (netsetgo.NetworkConfig, int) {
+func (fake *FakeConfigurer) ApplyArgsForCall(i int) (netsetgo.NetworkConfig, int) {
 	fake.applyMutex.RLock()
 	defer fake.applyMutex.RUnlock()
 	return fake.applyArgsForCall[i].netConfig, fake.applyArgsForCall[i].pid
 }
 
-func (fake *FakeHostConfigurer) ApplyReturns(result1 error) {
+func (fake *FakeConfigurer) ApplyReturns(result1 error) {
 	fake.ApplyStub = nil
 	fake.applyReturns = struct {
 		result1 error
 	}{result1}
 }
 
-func (fake *FakeHostConfigurer) Invocations() map[string][][]interface{} {
+func (fake *FakeConfigurer) Invocations() map[string][][]interface{} {
 	fake.invocationsMutex.RLock()
 	defer fake.invocationsMutex.RUnlock()
 	fake.applyMutex.RLock()
@@ -63,7 +63,7 @@ func (fake *FakeHostConfigurer) Invocations() map[string][][]interface{} {
 	return fake.invocations
 }
 
-func (fake *FakeHostConfigurer) recordInvocation(key string, args []interface{}) {
+func (fake *FakeConfigurer) recordInvocation(key string, args []interface{}) {
 	fake.invocationsMutex.Lock()
 	defer fake.invocationsMutex.Unlock()
 	if fake.invocations == nil {
@@ -75,4 +75,4 @@ func (fake *FakeHostConfigurer) recordInvocation(key string, args []interface{})
 	fake.invocations[key] = append(fake.invocations[key], args)
 }
 
-var _ netsetgo.HostConfigurer = new(FakeHostConfigurer)
+var _ netsetgo.Configurer = new(FakeConfigurer)
