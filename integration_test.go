@@ -84,5 +84,14 @@ var _ = Describe("netsetgo binary", func() {
 
 			Eventually(stdout).Should(gbytes.Say("10.10.10.2"))
 		})
+
+		It("sets the veth link to UP", func() {
+			stdout := gbytes.NewBuffer()
+			cmd := exec.Command("sh", "-c", "ip link show veth0")
+			_, err := gexec.Start(cmd, stdout, GinkgoWriter)
+			Expect(err).NotTo(HaveOccurred())
+
+			Eventually(stdout).Should(gbytes.Say("state UP"))
+		})
 	})
 })

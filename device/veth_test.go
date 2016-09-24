@@ -14,6 +14,7 @@ import (
 
 	"github.com/onsi/gomega/gbytes"
 	"github.com/onsi/gomega/gexec"
+	"github.com/vishvananda/netlink"
 )
 
 var _ = Describe("Veth", func() {
@@ -40,6 +41,18 @@ var _ = Describe("Veth", func() {
 			Expect(containerVeth.Name).To(Equal(fmt.Sprintf("%s1", vethNamePrefix)))
 		})
 
+		It("brings the veth link up", func() {
+			_, _, err := veth.Create(vethNamePrefix)
+			Expect(err).NotTo(HaveOccurred())
+
+			stdout := gbytes.NewBuffer()
+			cmd := exec.Command("sh", "-c", "ip link show veth0")
+			_, err = gexec.Start(cmd, stdout, GinkgoWriter)
+			Expect(err).NotTo(HaveOccurred())
+
+			Consistently(stdout).ShouldNot(gbytes.Say("DOWN"))
+		})
+
 		Context("when a veth pair using the provided name prefix already exists", func() {
 			BeforeEach(func() {
 				_, _, err := veth.Create(vethNamePrefix)
@@ -57,6 +70,27 @@ var _ = Describe("Veth", func() {
 
 				Expect(hostVeth.Name).To(Equal("veth0"))
 				Expect(containerVeth.Name).To(Equal("veth1"))
+			})
+
+			Context("and the link is already up", func() {
+				BeforeEach(func() {
+					link, err := netlink.LinkByName(fmt.Sprintf("%s0", vethNamePrefix))
+					Expect(err).NotTo(HaveOccurred())
+					Expect(netlink.LinkSetUp(link)).To(Succeed())
+				})
+
+				It("doesn't error", func() {
+					_, _, err := veth.Create(vethNamePrefix)
+					Expect(err).NotTo(HaveOccurred())
+				})
+
+				It("returns the host and container veths", func() {
+					hostVeth, containerVeth, err := veth.Create(vethNamePrefix)
+					Expect(err).NotTo(HaveOccurred())
+
+					Expect(hostVeth.Name).To(Equal("veth0"))
+					Expect(containerVeth.Name).To(Equal("veth1"))
+				})
 			})
 		})
 	})

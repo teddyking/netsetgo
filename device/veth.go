@@ -33,6 +33,10 @@ func (v *Veth) Create(namePrefix string) (*net.Interface, *net.Interface, error)
 		return nil, nil, err
 	}
 
+	if err := netlink.LinkSetUp(veth); err != nil {
+		return nil, nil, err
+	}
+
 	return vethInterfacesByName(hostVethName, containerVethName)
 }
 
