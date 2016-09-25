@@ -30,12 +30,17 @@ var _ = Describe("ContainerConfigurer", func() {
 		netnsExecer = &netns.Execer{}
 		containerConfigurer = NewContainerConfigurer(netnsExecer)
 
+		bridgeAddress := "10.10.10.1/24"
+		bridgeIP, _, err := net.ParseCIDR(bridgeAddress)
+		Expect(err).NotTo(HaveOccurred())
+
 		containerAddress := "10.10.10.10/24"
-		ip, net, err := net.ParseCIDR(containerAddress)
+		containerIP, net, err := net.ParseCIDR(containerAddress)
 		Expect(err).NotTo(HaveOccurred())
 
 		netConfig = netsetgo.NetworkConfig{
-			ContainerIP:    ip,
+			BridgeIP:       bridgeIP,
+			ContainerIP:    containerIP,
 			Subnet:         net,
 			VethNamePrefix: "veth",
 		}
@@ -67,6 +72,17 @@ var _ = Describe("ContainerConfigurer", func() {
 		Expect(err).NotTo(HaveOccurred())
 
 		Consistently(stdout).ShouldNot(gbytes.Say("DOWN"))
+	})
+
+	It("adds a default route for network traffic", func() {
+		Expect(containerConfigurer.Apply(netConfig, pid)).To(Succeed())
+
+		stdout := gbytes.NewBuffer()
+		cmd := exec.Command("sh", "-c", "ip netns exec testNetNamespace ip route show")
+		_, err := gexec.Start(cmd, stdout, GinkgoWriter)
+		Expect(err).NotTo(HaveOccurred())
+
+		Eventually(stdout).Should(gbytes.Say("default via 10.10.10.1 dev veth1"))
 	})
 
 	Context("when the network namespace doesn't exist", func() {

@@ -40,7 +40,17 @@ func (c *Container) Apply(netConfig netsetgo.NetworkConfig, pid int) error {
 			return fmt.Errorf("Unable to assign IP address '%s' to %s", netConfig.ContainerIP, containerVethName)
 		}
 
-		return netlink.LinkSetUp(link)
+		if err := netlink.LinkSetUp(link); err != nil {
+			return err
+		}
+
+		route := &netlink.Route{
+			Scope:     netlink.SCOPE_UNIVERSE,
+			LinkIndex: link.Attrs().Index,
+			Gw:        netConfig.BridgeIP,
+		}
+
+		return netlink.RouteAdd(route)
 	}
 
 	return c.NetnsExecer.Exec(netnsFile, cbFunc)
