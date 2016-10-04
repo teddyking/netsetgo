@@ -4,6 +4,7 @@ import (
 	. "github.com/onsi/ginkgo"
 	. "github.com/onsi/gomega"
 	. "github.com/teddyking/netsetgo/configurer"
+	. "github.com/teddyking/netsetgo/netsetgo_suite_helpers"
 
 	"net"
 	"os/exec"
@@ -23,9 +24,9 @@ var _ = Describe("ContainerConfigurer", func() {
 	)
 
 	BeforeEach(func() {
-		createTestNetNamespace()
-		parentPid, pid = runCmdInTestNetNamespace()
-		createTestVethInTestNetNamespace()
+		CreateNetNamespace("testNetNamespace")
+		parentPid, pid = RunCmdInNetNamespace("testNetNamespace", "sleep 1000")
+		CreateVethInNetNamespace("veth", "testNetNamespace")
 
 		netnsExecer = &netns.Execer{}
 		containerConfigurer = NewContainerConfigurer(netnsExecer)
@@ -47,9 +48,9 @@ var _ = Describe("ContainerConfigurer", func() {
 	})
 
 	AfterEach(func() {
-		killCmdInTestNetNamespace(parentPid)
-		cleanupTestNetNamespace()
-		cleanupTestVeth()
+		KillCmd(parentPid)
+		DestroyNetNamespace("testNetNamespace")
+		DestroyVeth("veth")
 	})
 
 	It("assigns the provided address to the container's side of the veth", func() {

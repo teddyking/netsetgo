@@ -3,6 +3,7 @@ package netsetgo_test
 import (
 	. "github.com/onsi/ginkgo"
 	. "github.com/onsi/gomega"
+	. "github.com/teddyking/netsetgo/netsetgo_suite_helpers"
 
 	"fmt"
 	"net"
@@ -20,8 +21,8 @@ var _ = Describe("netsetgo binary", func() {
 		)
 
 		BeforeEach(func() {
-			createTestNetNamespace()
-			parentPid, pid = runCmdInTestNetNamespace()
+			CreateNetNamespace("testNetNamespace")
+			parentPid, pid = RunCmdInNetNamespace("testNetNamespace", "sleep 1000")
 
 			command := exec.Command(pathToNetsetgo,
 				"--bridgeName=tower",
@@ -37,10 +38,10 @@ var _ = Describe("netsetgo binary", func() {
 		})
 
 		AfterEach(func() {
-			killCmdInTestNetNamespace(parentPid)
-			cleanupTestNetNamespace()
-			cleanupTestBridge()
-			cleanupTestVeth()
+			KillCmd(parentPid)
+			DestroyNetNamespace("testNetNamespace")
+			DestroyBridge("tower")
+			DestroyVeth("veth")
 		})
 
 		It("creates a bridge device on the host with the provided name", func() {
