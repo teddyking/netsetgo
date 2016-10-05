@@ -19,7 +19,7 @@ func main() {
 	flag.StringVar(&bridgeName, "bridgeName", "brg0", "Name to assign to bridge device")
 	flag.StringVar(&bridgeAddress, "bridgeAddress", "10.10.10.1/24", "Address to assign to bridge device (CIDR notation)")
 	flag.StringVar(&vethNamePrefix, "vethNamePrefix", "veth", "Name prefix for veth devices")
-	flag.StringVar(&containerAddress, "containerAddress", "10.10.10.2", "Address to assign to the container (CIDR notation)")
+	flag.StringVar(&containerAddress, "containerAddress", "10.10.10.2/24", "Address to assign to the container (CIDR notation)")
 	flag.IntVar(&pid, "pid", 0, "pid of a process in the container's network namespace")
 	flag.Parse()
 
@@ -45,8 +45,8 @@ func main() {
 		VethNamePrefix: vethNamePrefix,
 	}
 
-	netset.ConfigureHost(netConfig, pid)
-	netset.ConfigureContainer(netConfig, pid)
+	check(netset.ConfigureHost(netConfig, pid))
+	check(netset.ConfigureContainer(netConfig, pid))
 }
 
 func check(err error) {
