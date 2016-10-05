@@ -9,7 +9,6 @@ import (
 	"net"
 	"os/exec"
 
-	"github.com/onsi/gomega/gbytes"
 	"github.com/onsi/gomega/gexec"
 )
 
@@ -69,30 +68,15 @@ var _ = Describe("netsetgo binary", func() {
 		})
 
 		It("puts the container's side of the veth pair into the net ns of the process specified by the provided pid", func() {
-			stdout := gbytes.NewBuffer()
-			cmd := exec.Command("sh", "-c", "ip netns exec testNetNamespace ip addr")
-			_, err := gexec.Start(cmd, stdout, GinkgoWriter)
-			Expect(err).NotTo(HaveOccurred())
-
-			Eventually(stdout).Should(gbytes.Say("veth1"))
+			EnsureOutputForCommand("ip netns exec testNetNamespace ip addr", "veth1")
 		})
 
 		It("assignss the provided IP address to the container's side of the veth pair", func() {
-			stdout := gbytes.NewBuffer()
-			cmd := exec.Command("sh", "-c", "ip netns exec testNetNamespace ip addr")
-			_, err := gexec.Start(cmd, stdout, GinkgoWriter)
-			Expect(err).NotTo(HaveOccurred())
-
-			Eventually(stdout).Should(gbytes.Say("10.10.10.2"))
+			EnsureOutputForCommand("ip netns exec testNetNamespace ip addr", "10.10.10.2")
 		})
 
 		It("sets the veth link to UP", func() {
-			stdout := gbytes.NewBuffer()
-			cmd := exec.Command("sh", "-c", "ip link show veth0")
-			_, err := gexec.Start(cmd, stdout, GinkgoWriter)
-			Expect(err).NotTo(HaveOccurred())
-
-			Eventually(stdout).Should(gbytes.Say("state UP"))
+			EnsureOutputForCommand("ip link show veth0", "state UP")
 		})
 	})
 })

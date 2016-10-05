@@ -118,12 +118,7 @@ var _ = Describe("Veth", func() {
 			err := veth.MoveToNetworkNamespace(containerVeth, pid)
 			Expect(err).NotTo(HaveOccurred())
 
-			stdout := gbytes.NewBuffer()
-			cmd := exec.Command("sh", "-c", "ip netns exec testNetNamespace ip addr")
-			_, err = gexec.Start(cmd, stdout, GinkgoWriter)
-			Expect(err).NotTo(HaveOccurred())
-
-			Eventually(stdout).Should(gbytes.Say(fmt.Sprintf("%s1", vethNamePrefix)))
+			EnsureOutputForCommand("ip netns exec testNetNamespace ip addr", fmt.Sprintf("%s1", vethNamePrefix))
 		})
 
 		Context("when the veth doesn't exist", func() {

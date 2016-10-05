@@ -1,6 +1,7 @@
 package netsetgo_suite_helpers
 
 import (
+	. "github.com/onsi/ginkgo"
 	. "github.com/onsi/gomega"
 
 	"fmt"
@@ -8,6 +9,9 @@ import (
 	"os/exec"
 	"strconv"
 	"strings"
+
+	"github.com/onsi/gomega/gbytes"
+	"github.com/onsi/gomega/gexec"
 )
 
 func CreateNetNamespace(name string) {
@@ -71,4 +75,13 @@ func RunCmdInNetNamespace(netNamespaceName string, cmdPathAndArgs string) (int, 
 	Expect(err).NotTo(HaveOccurred())
 
 	return parentPid, pid
+}
+
+func EnsureOutputForCommand(command, expectedOutput string) {
+	stdout := gbytes.NewBuffer()
+	cmd := exec.Command("sh", "-c", command)
+	_, err := gexec.Start(cmd, stdout, GinkgoWriter)
+	Expect(err).NotTo(HaveOccurred())
+
+	Eventually(stdout).Should(gbytes.Say(expectedOutput))
 }

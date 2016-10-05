@@ -56,12 +56,7 @@ var _ = Describe("ContainerConfigurer", func() {
 	It("assigns the provided address to the container's side of the veth", func() {
 		Expect(containerConfigurer.Apply(netConfig, pid)).To(Succeed())
 
-		stdout := gbytes.NewBuffer()
-		cmd := exec.Command("sh", "-c", "ip netns exec testNetNamespace ip addr")
-		_, err := gexec.Start(cmd, stdout, GinkgoWriter)
-		Expect(err).NotTo(HaveOccurred())
-
-		Eventually(stdout).Should(gbytes.Say("10.10.10.10"))
+		EnsureOutputForCommand("ip netns exec testNetNamespace ip addr", "10.10.10.10")
 	})
 
 	It("brings the veth link up", func() {
@@ -78,12 +73,7 @@ var _ = Describe("ContainerConfigurer", func() {
 	It("adds a default route for network traffic", func() {
 		Expect(containerConfigurer.Apply(netConfig, pid)).To(Succeed())
 
-		stdout := gbytes.NewBuffer()
-		cmd := exec.Command("sh", "-c", "ip netns exec testNetNamespace ip route show")
-		_, err := gexec.Start(cmd, stdout, GinkgoWriter)
-		Expect(err).NotTo(HaveOccurred())
-
-		Eventually(stdout).Should(gbytes.Say("default via 10.10.10.1 dev veth1"))
+		EnsureOutputForCommand("ip netns exec testNetNamespace ip route show", "default via 10.10.10.1 dev veth1")
 	})
 
 	Context("when the network namespace doesn't exist", func() {
