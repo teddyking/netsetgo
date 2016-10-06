@@ -25,3 +25,26 @@ sudo netsetgo \
   -pid 100 \
   -vethNamePrefix veth
 ```
+
+## Limitations
+
+netsetgo does not currently perform any iptables configuration, which could mean
+that your containers aren't able to reach the Internet. The following set of
+iptables rules will enable Internet connectivity.
+
+```
+iptables -tnat -N netsetgo
+iptables -tnat -A PREROUTING -m addrtype --dst-type LOCAL -j netsetgo
+iptables -tnat -A OUTPUT ! -d 127.0.0.0/8 -m addrtype --dst-type LOCAL -j netsetgo
+iptables -tnat -A POSTROUTING -s 10.10.10.0/24 ! -o brg0 -j MASQUERADE
+iptables -tnat -A netsetgo -i brg0 -j RETURN
+```
+
+## Testing
+
+[concourse CI](http://concourse.ci/) is used both for testing and CI.
+To run the test suite:
+
+```
+fly -t lite e -c ci/test.yml -x -p -i netsetgo-src=.
+```
