@@ -1,0 +1,3 @@
+#!/bin/bash
+
+fly -t lite e -c ci/test.yml -x -p -i netsetgo-src=.
