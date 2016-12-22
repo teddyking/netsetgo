@@ -26,6 +26,9 @@ sudo netsetgo \
   -vethNamePrefix veth
 ```
 
+The `-pid` argument is used to determine the Network namespace in which to place the container's side of the veth pair.
+All other args are optional.
+
 ## Limitations
 
 netsetgo does not currently perform any iptables configuration, which could mean
@@ -40,11 +43,21 @@ iptables -tnat -A POSTROUTING -s 10.10.10.0/24 ! -o brg0 -j MASQUERADE
 iptables -tnat -A netsetgo -i brg0 -j RETURN
 ```
 
+Also note that netsetgo does not currently perform any cleanup of devices. Veth devices should
+be removed once they are no longer in use, but bridge devices will probably hang around.
+
 ## Testing
 
-[concourse CI](http://concourse.ci/) is used both for testing and CI.
-To run the test suite:
+[concourse CI](http://concourse.ci/) is used for both testing and CI.
+The test suite can be run against a local concourse-lite machine with the following:
 
 ```
 fly -t lite e -c ci/test.yml -x -p -i netsetgo-src=.
 ```
+
+## Special Thanks
+
+netsetgo would not be possible without the
+[netlink](https://github.com/vishvananda/netlink) and
+[kawasaki](https://github.com/cloudfoundry/guardian/tree/master/kawasaki)
+packages.
