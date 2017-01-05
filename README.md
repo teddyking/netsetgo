@@ -44,7 +44,8 @@ iptables -tnat -A netsetgo -i brg0 -j RETURN
 ```
 
 Also note that netsetgo does not currently perform any cleanup of devices. Veth devices should
-be removed once they are no longer in use, but bridge devices will probably hang around.
+be removed automatically once they are no longer in use, but bridge devices will probably hang around.
+Finally, netsetgo isn't built to be run concurrently.
 
 ## Testing
 
