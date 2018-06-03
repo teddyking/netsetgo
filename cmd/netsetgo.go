@@ -23,6 +23,11 @@ func main() {
 	flag.IntVar(&pid, "pid", 0, "pid of a process in the container's network namespace")
 	flag.Parse()
 
+	if pid == 0 {
+		fmt.Println("ERROR - netsetgo needs a pid")
+		os.Exit(1)
+	}
+
 	bridgeCreator := device.NewBridge()
 	vethCreator := device.NewVeth()
 	netnsExecer := &netns.Execer{}

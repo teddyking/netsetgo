@@ -13,6 +13,14 @@ import (
 )
 
 var _ = Describe("netsetgo binary", func() {
+	Context("when an invalid pid is provided", func() {
+		It("exits 1", func() {
+			command := exec.Command(pathToNetsetgo)
+			session, err := gexec.Start(command, GinkgoWriter, GinkgoWriter)
+			Expect(err).NotTo(HaveOccurred())
+			Eventually(session).Should(gexec.Exit(1))
+		})
+	})
 	Context("when passed all required args", func() {
 		var (
 			parentPid int
