@@ -23,6 +23,12 @@ func main() {
 	flag.IntVar(&pid, "pid", 0, "pid of a process in the container's network namespace")
 	flag.Parse()
 
+	if os.Geteuid() != 0 {
+		fmt.Println("ERROR - netsetgo must have root access")
+		fmt.Println("netsetgo needs CAP_SYS_ADMIN, setuid, or being executed as root")
+		os.Exit(1)
+	}
+
 	if pid == 0 {
 		fmt.Println("ERROR - netsetgo needs a pid")
 		os.Exit(1)

@@ -6,13 +6,49 @@ import (
 	. "github.com/teddyking/netsetgo/netsetgo_suite_helpers"
 
 	"fmt"
+	"log"
 	"net"
+	"os"
 	"os/exec"
+	"path"
+	"syscall"
 
 	"github.com/onsi/gomega/gexec"
 )
 
+// Used when netsetgo needs to be executed by an ordinary user, since
+// the gexec directory permission are for root only access
+func makeAccessible() {
+	pathf := pathToNetsetgo
+	for {
+		pathf = path.Dir(pathf)
+		if pathf == os.TempDir() {
+			break
+		}
+
+		if err := os.Chmod(pathf, 0655); err != nil {
+			log.Fatal("chmod in ", pathf, " failed")
+		}
+	}
+}
+
 var _ = Describe("netsetgo binary", func() {
+	Context("when executing without permission", func() {
+		It("exits 1", func() {
+			makeAccessible()
+
+			command := exec.Command(pathToNetsetgo)
+			command.SysProcAttr = &syscall.SysProcAttr{
+				Credential: &syscall.Credential{
+					Uid: 1000,
+					Gid: 1000,
+				},
+			}
+			session, err := gexec.Start(command, GinkgoWriter, GinkgoWriter)
+			Expect(err).NotTo(HaveOccurred())
+			Eventually(session).Should(gexec.Exit(1))
+		})
+	})
 	Context("when an invalid pid is provided", func() {
 		It("exits 1", func() {
 			command := exec.Command(pathToNetsetgo)
